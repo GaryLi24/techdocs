@@ -1,4 +1,3 @@
-// app/manual/[...slug]/page.tsx
 import { promises as fs } from 'fs'
 import path from 'path'
 import { notFound } from 'next/navigation'
@@ -6,9 +5,16 @@ import { Metadata, ResolvingMetadata } from 'next'
 import Link from 'next/link'
 import { Container, Typography, Box, Paper, Breadcrumbs } from '@mui/material'
 
+// 定义页面参数类型
+type ManualPageProps = {
+  params: {
+    slug: string[]
+  }
+}
+
 // 动态生成元数据
 export async function generateMetadata(
-  { params }: { params: { slug: string[] } },
+  { params }: ManualPageProps,
   parent: ResolvingMetadata
 ): Promise<Metadata> {
   // 读取数据文件
@@ -54,11 +60,7 @@ export async function generateStaticParams() {
   return paths
 }
 
-export default async function ManualPage({
-  params,
-}: {
-  params: { slug: string[] }
-}) {
+export default async function ManualPage({ params }: ManualPageProps) {
   // 获取数据
   const filePath = path.join(process.cwd(), 'public', 'data.json')
   const fileContents = await fs.readFile(filePath, 'utf8')
