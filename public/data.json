@@ -2,7 +2,7 @@
   "roles": [
     {
       "id": "crew",
-      "title": "船员",
+      "name": "船员",
       "description": "船员相关指南和服务",
       "icon": "sailor",
       "categories": [
@@ -24,7 +24,7 @@
     },
     {
       "id": "maintenance",
-      "title": "运维工程师",
+      "name": "运维工程师",
       "description": "系统维护与故障排除指南",
       "icon": "engineer",
       "categories": [
@@ -46,7 +46,7 @@
     },
     {
       "id": "smart-ship",
-      "title": "智能船舶工程师",
+      "name": "智能船舶工程师",
       "description": "智能系统操作与管理",
       "icon": "smart-ship",
       "categories": [
