@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { Container, Typography, Box, Paper, Breadcrumbs } from '@mui/material'
 import DocumentTitle from '@/components/DocumentTitle'
 import dynamic from 'next/dynamic'
+import DocNavigation from '@/components/DocNavigation'
 
 // 使用动态导入渐进式渲染组件
 const ProgressiveMarkdown = dynamic(
@@ -156,17 +157,13 @@ export default async function ManualPage({ params }: { params: any }) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-gray-50 pb-4">
+      <DocNavigation
+        markdownContent={markdownContent}
+        title={currentDocument.title}
+        roleName={currentRole.name}
+      />
       <Container maxWidth="md">
-        {/* 面包屑导航 */}
-        <Breadcrumbs aria-label="breadcrumb" className="mb-6">
-          <Link href="/" className="text-blue-600 hover:underline">
-            首页
-          </Link>
-          <Typography color="text.primary">{currentRole.name}</Typography>
-          <Typography color="text.primary">{currentDocument.title}</Typography>
-        </Breadcrumbs>
-
         {/* 文档内容 - 使用渐进式渲染 */}
         <Paper
           elevation={0}
@@ -201,22 +198,6 @@ export default async function ManualPage({ params }: { params: any }) {
             <ProgressiveMarkdown content={markdownContent} />
           </Box>
         </Paper>
-
-        {/* 返回按钮 */}
-        <Box sx={{ mt: 4 }}>
-          <Link
-            href="/"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              color: '#3a86ff',
-              textDecoration: 'none',
-              fontWeight: 500,
-            }}
-          >
-            ← 返回帮助中心
-          </Link>
-        </Box>
       </Container>
     </div>
   )

@@ -108,6 +108,51 @@ export default function MarkdownContent({ content }: MarkdownContentProps) {
       <ReactMarkdown
         rehypePlugins={[rehypeRaw, rehypeSanitize]}
         remarkPlugins={[remarkGfm]}
+        components={{
+          h1: ({ node, ...props }) => {
+            const id = props.children
+              ? String(props.children).toLowerCase().replace(/\s+/g, '-')
+              : ''
+            return (
+              <Typography
+                variant="h4"
+                component="h2"
+                id={id}
+                sx={{ mt: 4, mb: 2, fontWeight: 600, scrollMarginTop: '80px' }}
+                {...props}
+              />
+            )
+          },
+          h2: ({ node, ...props }) => {
+            const id = props.children
+              ? String(props.children).toLowerCase().replace(/\s+/g, '-')
+              : ''
+            return (
+              <Typography
+                variant="h5"
+                component="h3"
+                id={id}
+                sx={{ mt: 3, mb: 2, fontWeight: 600, scrollMarginTop: '80px' }}
+                {...props}
+              />
+            )
+          },
+          h3: ({ node, ...props }) => {
+            const id = props.children
+              ? String(props.children).toLowerCase().replace(/\s+/g, '-')
+              : ''
+            return (
+              <Typography
+                variant="h6"
+                component="h4"
+                id={id}
+                sx={{ mt: 2, mb: 2, fontWeight: 500, scrollMarginTop: '80px' }}
+                {...props}
+              />
+            )
+          },
+          // ...其他组件
+        }}
       >
         {content}
       </ReactMarkdown>
