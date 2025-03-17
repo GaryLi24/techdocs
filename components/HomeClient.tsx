@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   AppBar,
   Toolbar,
@@ -28,6 +28,7 @@ import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import SailingIcon from '@mui/icons-material/Sailing'
 import EngineeringIcon from '@mui/icons-material/Engineering'
 import SettingsSuggestIcon from '@mui/icons-material/SettingsSuggest'
+import { useRouter } from 'next/navigation'
 
 // 保持接口定义
 interface Category {
@@ -94,6 +95,7 @@ const extractMarkdownHeadings = (content: string) => {
 
 // 组件接收服务端获取的数据
 export default function HomeClient({ initialRoles }: { initialRoles: Role[] }) {
+  const router = useRouter()
   const theme = useTheme()
   const [roles] = useState<Role[]>(initialRoles)
   const [selectedRole, setSelectedRole] = useState<Role | null>(
@@ -110,19 +112,53 @@ export default function HomeClient({ initialRoles }: { initialRoles: Role[] }) {
   }>({})
 
   const [searchResults, setSearchResults] = useState<SearchResult[]>([])
+  // 添加一个标记，确保此 effect 只运行一次
+  const didLoad = useRef(false)
+
+  // 添加全局变量跟踪已经请求的文件
+  const requestInProgress = new Map()
 
   // 加载 Markdown 内容
   const loadMarkdownContent = useCallback(async (path: string) => {
-    try {
-      const response = await fetch(`/${path}`)
-      if (response.ok) {
-        return await response.text()
-      }
-      return ''
-    } catch (error) {
-      console.error(`Error loading markdown from ${path}:`, error)
-      return ''
+    // 检查会话存储缓存
+    const cachedContent = sessionStorage.getItem(`md-cache-${path}`)
+    if (cachedContent) {
+      return cachedContent
     }
+
+    // 检查是否已有相同的请求正在进行中
+    if (requestInProgress.has(path)) {
+      return await requestInProgress.get(path)
+    }
+
+    // 创建新请求并存储 Promise
+    const requestPromise = (async () => {
+      try {
+        const response = await fetch(`/${path}`, {
+          cache: 'force-cache',
+          headers: {
+            'Cache-Control': 'max-age=3600',
+          },
+        })
+
+        if (response.ok) {
+          const content = await response.text()
+          sessionStorage.setItem(`md-cache-${path}`, content)
+          return content
+        }
+        return ''
+      } catch (error) {
+        console.error(`Error loading markdown from ${path}:`, error)
+        return ''
+      } finally {
+        // 请求完成后从映射中删除
+        requestInProgress.delete(path)
+      }
+    })()
+
+    // 存储请求 Promise
+    requestInProgress.set(path, requestPromise)
+    return requestPromise
   }, [])
 
   // 处理角色变更
@@ -148,24 +184,42 @@ export default function HomeClient({ initialRoles }: { initialRoles: Role[] }) {
   // 初始加载所有 Markdown 文件
   useEffect(() => {
     const loadAllMarkdown = async () => {
-      if (roles.length === 0) return
+      if (roles.length === 0 || didLoad.current) return
+      didLoad.current = true
+
+      console.log('初始化加载 Markdown 文件')
+
+      // 先检查已有的内容避免重复加载
+      if (Object.keys(markdownContents).length > 0) return
 
       const contents: { [key: string]: string } = {}
+      const loadPromises: Promise<void>[] = []
 
+      // 改为并行请求提高效率
       for (const role of roles) {
         for (const category of role.categories) {
-          if (category.contentPath) {
-            contents[category.id] = await loadMarkdownContent(
-              category.contentPath
+          if (
+            category.contentPath &&
+            !requestInProgress.has(category.contentPath)
+          ) {
+            loadPromises.push(
+              loadMarkdownContent(category.contentPath).then(content => {
+                contents[category.id] = content
+              })
             )
           }
         }
       }
+
+      // 等待所有加载完成
+      await Promise.all(loadPromises)
       setMarkdownContents(contents)
     }
 
     loadAllMarkdown()
-  }, [roles, loadMarkdownContent])
+
+    // 移除 loadMarkdownContent 依赖，避免重复触发
+  }, [roles]) // 只在 roles 变化时重新加载
 
   // 使用效果钩子实现实时搜索 - 新增
   useEffect(() => {
@@ -420,6 +474,21 @@ export default function HomeClient({ initialRoles }: { initialRoles: Role[] }) {
                   key={category.id}
                   component="a"
                   href={`/manual/${category.slug}`}
+                  onMouseEnter={() => {
+                    // 预加载文档内容
+                    if (category.contentPath && markdownContents[category.id]) {
+                      loadMarkdownContent(category.contentPath).then(
+                        content => {
+                          setMarkdownContents(prev => ({
+                            ...prev,
+                            [category.id]: content,
+                          }))
+                        }
+                      )
+                    }
+                    // 可选：使用 Next.js 预加载页面
+                    router.prefetch(`/manual/${category.slug}`)
+                  }}
                   sx={{
                     display: 'block',
                     textDecoration: 'none',

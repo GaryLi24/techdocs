@@ -15,7 +15,7 @@ type PageProps = {
 
 // 动态生成元数据
 export async function generateMetadata(
-  { params }: PageProps,
+  { params }: { params: any },
   parent: ResolvingMetadata
 ): Promise<Metadata> {
   // 读取数据文件
@@ -24,7 +24,8 @@ export async function generateMetadata(
   const data = JSON.parse(fileContents)
 
   // 找到当前文档
-  const slugString = params.slug.join('/')
+  const resolvedParams = await params
+  const slugString = Array.isArray(resolvedParams.slug)
   let documentTitle = '文档详情'
 
   // 查找匹配的文档
@@ -38,7 +39,7 @@ export async function generateMetadata(
   }
 
   return {
-    title: `${documentTitle} | 技术文档平台`,
+    title: `${documentTitle}`,
   }
 }
 
@@ -61,14 +62,17 @@ export async function generateStaticParams() {
   return paths
 }
 
-export default async function ManualPage({ params }: PageProps) {
+export default async function ManualPage({ params }: { params: any }) {
   // 获取数据
   const filePath = path.join(process.cwd(), 'public', 'data.json')
   const fileContents = await fs.readFile(filePath, 'utf8')
   const data = JSON.parse(fileContents)
 
   // 查找当前内容
-  const slugString = params.slug.join('/')
+  const resolvedParams = await params
+  const slugString = Array.isArray(resolvedParams.slug)
+    ? resolvedParams.slug.join('/')
+    : ''
   let currentDocument = null
   let currentRole = null
 
