@@ -4,14 +4,21 @@ import { notFound } from 'next/navigation'
 import { Metadata, ResolvingMetadata } from 'next'
 import Link from 'next/link'
 import { Container, Typography, Box, Paper, Breadcrumbs } from '@mui/material'
-import MarkdownContent from '@/components/MarkdownContent' // 我们将创建这个组件
+import DocumentTitle from '@/components/DocumentTitle'
+import dynamic from 'next/dynamic'
 
-// 类型定义
-type PageProps = {
-  params: {
-    slug: string[]
+// 使用动态导入渐进式渲染组件
+const ProgressiveMarkdown = dynamic(
+  () => import('@/components/ProgressiveMarkdown'),
+  {
+    loading: () => (
+      <Box sx={{ my: 4 }}>
+        <Typography>加载文档中...</Typography>
+      </Box>
+    ),
+    ssr: true, // 允许服务器端渲染初始版本
   }
-}
+)
 
 // 动态生成元数据
 export async function generateMetadata(
@@ -119,7 +126,7 @@ export default async function ManualPage({ params }: { params: any }) {
           <Typography color="text.primary">{currentDocument.title}</Typography>
         </Breadcrumbs>
 
-        {/* 文档内容 */}
+        {/* 文档内容 - 使用渐进式渲染 */}
         <Paper
           elevation={0}
           sx={{
@@ -129,9 +136,8 @@ export default async function ManualPage({ params }: { params: any }) {
             boxShadow: '0 2px 10px rgba(0, 0, 0, 0.05)',
           }}
         >
-          <Typography variant="h4" component="h1" sx={{ mb: 3 }}>
-            {currentDocument.title}
-          </Typography>
+          {/* 使用客户端组件处理标题 */}
+          <DocumentTitle title={currentDocument.title} />
 
           {currentDocument.description && (
             <Typography
@@ -147,9 +153,9 @@ export default async function ManualPage({ params }: { params: any }) {
             </Typography>
           )}
 
-          {/* Markdown渲染组件 */}
+          {/* 使用渐进式Markdown渲染 */}
           <Box sx={{ mt: 3 }}>
-            <MarkdownContent content={markdownContent} />
+            <ProgressiveMarkdown content={markdownContent} />
           </Box>
         </Paper>
 
