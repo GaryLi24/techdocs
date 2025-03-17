@@ -471,7 +471,7 @@ export default function HomeClient({ initialRoles }: { initialRoles: Role[] }) {
                 <Box
                   key={category.id}
                   component="a"
-                  href={`/manual/${category.slug}`}
+                  href={`/docs/${category.slug}`}
                   onMouseEnter={() => {
                     // 预加载文档内容
                     if (category.contentPath && markdownContents[category.id]) {
@@ -485,7 +485,7 @@ export default function HomeClient({ initialRoles }: { initialRoles: Role[] }) {
                       )
                     }
                     // 可选：使用 Next.js 预加载页面
-                    router.prefetch(`/manual/${category.slug}`)
+                    router.prefetch(`/docs/${category.slug}`)
                   }}
                   sx={{
                     display: 'block',
@@ -581,7 +581,7 @@ export default function HomeClient({ initialRoles }: { initialRoles: Role[] }) {
                   {result.titleMatch && (
                     <Box
                       component="a"
-                      href={`/manual/${result.category.slug}`}
+                      href={`/docs/${result.category.slug}`}
                       sx={{
                         display: 'block',
                         textDecoration: 'none',
@@ -696,7 +696,7 @@ export default function HomeClient({ initialRoles }: { initialRoles: Role[] }) {
                           >
                             在{' '}
                             <MuiLink
-                              href={`/manual/${result.category.slug}`}
+                              href={`/docs/${result.category.slug}`}
                               sx={{
                                 fontWeight: 500,
                                 color: theme.palette.primary.main,
@@ -721,7 +721,7 @@ export default function HomeClient({ initialRoles }: { initialRoles: Role[] }) {
                               }}
                             >
                               <MuiLink
-                                href={`/manual/${
+                                href={`/docs/${
                                   result.category.slug
                                 }#${heading.text
                                   .replace(/\s+/g, '-')

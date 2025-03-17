@@ -4,7 +4,7 @@ Portal 使用手册
 
 版本：V2\.0\.2
 
-![公司卫星效果图](/content/crew/images/p-1.png)
+![公司卫星效果图](/content/crew/imgs/p-1.png)
 
 APT Mobile SatCom Limited
 
