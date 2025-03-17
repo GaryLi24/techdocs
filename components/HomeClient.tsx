@@ -262,7 +262,7 @@ export default function HomeClient({ initialRoles }: { initialRoles: Role[] }) {
         }
       }
       setIsSearching(false)
-    }, 300)
+    }, 800)
 
     return () => clearTimeout(searchTimeout)
   }, [searchQuery, selectedRole, markdownContents])
