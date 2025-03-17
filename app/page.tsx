@@ -8,7 +8,6 @@ export default async function Home() {
   const filePath = path.join(process.cwd(), 'public', 'data.json')
   const fileContents = await fs.readFile(filePath, 'utf8')
   const data = JSON.parse(fileContents)
-  console.log('🚀 ~ Home ~ data:', data)
 
   // 将数据传递给客户端组件
   return <HomeClient initialRoles={data.roles} />

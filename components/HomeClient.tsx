@@ -187,8 +187,6 @@ export default function HomeClient({ initialRoles }: { initialRoles: Role[] }) {
       if (roles.length === 0 || didLoad.current) return
       didLoad.current = true
 
-      console.log('初始化加载 Markdown 文件')
-
       // 先检查已有的内容避免重复加载
       if (Object.keys(markdownContents).length > 0) return
 
