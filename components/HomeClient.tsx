@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   AppBar,
   Toolbar,
@@ -41,7 +41,7 @@ interface Category {
   title: string
   description: string
   slug: string
-  content?: string
+  contentPath?: string
 }
 
 interface Role {
@@ -79,6 +79,23 @@ export default function HomeClient({ initialRoles }: { initialRoles: Role[] }) {
   const [searchQuery, setSearchQuery] = useState<string>('')
   const [filteredCategories, setFilteredCategories] = useState<Category[]>([])
   const [isSearching, setIsSearching] = useState<boolean>(false)
+  const [markdownContents, setMarkdownContents] = useState<{
+    [key: string]: string
+  }>({})
+
+  // 加载 Markdown 内容
+  const loadMarkdownContent = useCallback(async (path: string) => {
+    try {
+      const response = await fetch(`/${path}`)
+      if (response.ok) {
+        return await response.text()
+      }
+      return ''
+    } catch (error) {
+      console.error(`Error loading markdown from ${path}:`, error)
+      return ''
+    }
+  }, [])
 
   // 处理角色变更
   const handleRoleChange = (event: SelectChangeEvent<string>) => {
@@ -100,33 +117,65 @@ export default function HomeClient({ initialRoles }: { initialRoles: Role[] }) {
     }
   }
 
+  // 初始加载所有 Markdown 文件
+  useEffect(() => {
+    const loadAllMarkdown = async () => {
+      if (roles.length === 0) return
+
+      const contents: { [key: string]: string } = {}
+
+      for (const role of roles) {
+        for (const category of role.categories) {
+          if (category.contentPath) {
+            contents[category.id] = await loadMarkdownContent(
+              category.contentPath
+            )
+          }
+        }
+      }
+
+      setMarkdownContents(contents)
+    }
+
+    loadAllMarkdown()
+  }, [roles, loadMarkdownContent])
+
   // 使用效果钩子实现实时搜索 - 新增
   useEffect(() => {
-    // 实现轻量级防抖
     const searchTimeout = setTimeout(() => {
       if (selectedRole) {
         if (searchQuery.trim() === '') {
           // 无查询时显示全部
           setFilteredCategories(selectedRole.categories)
         } else {
-          // 过滤符合条件的分类
-          const filtered = selectedRole.categories.filter(
-            category =>
-              category.title
-                .toLowerCase()
-                .includes(searchQuery.toLowerCase()) ||
-              category.description
-                .toLowerCase()
-                .includes(searchQuery.toLowerCase())
-          )
+          // 增强搜索 - 包含 Markdown 内容
+          const filtered = selectedRole.categories.filter(category => {
+            // 搜索标题和描述
+            const titleMatch = category.title
+              .toLowerCase()
+              .includes(searchQuery.toLowerCase())
+
+            const descriptionMatch = category.description
+              .toLowerCase()
+              .includes(searchQuery.toLowerCase())
+
+            // 搜索 Markdown 内容
+            const content = markdownContents[category.id] || ''
+            const contentMatch = content
+              .toLowerCase()
+              .includes(searchQuery.toLowerCase())
+
+            return titleMatch || descriptionMatch || contentMatch
+          })
+
           setFilteredCategories(filtered)
         }
       }
       setIsSearching(false)
-    }, 300) // 300ms延迟，避免频繁搜索
+    }, 300)
 
     return () => clearTimeout(searchTimeout)
-  }, [searchQuery, selectedRole])
+  }, [searchQuery, selectedRole, markdownContents])
 
   // 初始化过滤分类
   useEffect(() => {
@@ -138,6 +187,36 @@ export default function HomeClient({ initialRoles }: { initialRoles: Role[] }) {
   // 切换语言
   const toggleLanguage = () => {
     setLanguage(prev => (prev === 'zh' ? 'en' : 'zh'))
+  }
+
+  // 创建一个函数获取匹配的内容片段
+  const getMatchingSnippet = (
+    content: string,
+    query: string,
+    snippetLength = 100
+  ) => {
+    if (!content || !query) return ''
+
+    const lowerContent = content.toLowerCase()
+    const lowerQuery = query.toLowerCase()
+    const index = lowerContent.indexOf(lowerQuery)
+
+    if (index === -1) return ''
+
+    // 计算片段的开始和结束位置
+    const start = Math.max(0, index - snippetLength / 2)
+    const end = Math.min(
+      content.length,
+      index + query.length + snippetLength / 2
+    )
+
+    let snippet = content.slice(start, end).trim()
+
+    // 添加省略号
+    if (start > 0) snippet = '...' + snippet
+    if (end < content.length) snippet = snippet + '...'
+
+    return snippet
   }
 
   return (
@@ -327,100 +406,104 @@ export default function HomeClient({ initialRoles }: { initialRoles: Role[] }) {
 
             {filteredCategories.length > 0 ? (
               filteredCategories.map((category, index) => (
-                <Paper
+                <Box
                   key={category.id}
-                  elevation={0}
+                  component="a"
+                  href={`/manual/${category.slug}`}
                   sx={{
+                    display: 'block',
+                    textDecoration: 'none',
                     mb: 1,
-                    overflow: 'hidden',
-                    borderRadius: 2,
-                    border: `1px solid ${alpha(
-                      theme.palette.primary.main,
-                      0.1
-                    )}`,
-                    transition: 'transform 0.2s, box-shadow 0.2s',
-                    '&:hover': {
-                      transform: 'translateY(-2px)',
-                      boxShadow: `0 4px 12px ${alpha(
-                        theme.palette.common.black,
-                        0.08
-                      )}`,
-                    },
-                    // 高亮匹配项
-                    ...(searchQuery && {
-                      border: `1px solid ${alpha(
-                        theme.palette.primary.main,
-                        0.3
-                      )}`,
-                    }),
+                    color: 'inherit',
                   }}
                 >
-                  <Accordion
-                    disableGutters
+                  <Paper
                     elevation={0}
-                    defaultExpanded={!!searchQuery} // 搜索时默认展开
                     sx={{
-                      '&:before': {
-                        display: 'none',
+                      overflow: 'hidden',
+                      borderRadius: 2,
+                      border: `1px solid ${alpha(
+                        theme.palette.primary.main,
+                        0.1
+                      )}`,
+                      transition:
+                        'transform 0.2s, box-shadow 0.2s background-color 0.2s',
+                      '&:hover': {
+                        transform: 'translateY(-2px)',
+                        boxShadow: `0 4px 12px ${alpha(
+                          theme.palette.common.black,
+                          0.08
+                        )}`,
+                        backgroundColor: alpha(
+                          theme.palette.primary.light,
+                          0.05
+                        ),
+                        '& .arrow-icon': {
+                          transform: 'translateX(3px)',
+                          opacity: 1,
+                        },
                       },
+                      // 高亮匹配项
+                      ...(searchQuery && {
+                        border: `1px solid ${alpha(
+                          theme.palette.primary.main,
+                          0.3
+                        )}`,
+                      }),
                     }}
                   >
-                    <AccordionSummary
-                      expandIcon={
-                        <ExpandMoreIcon
-                          sx={{ color: theme.palette.primary.main }}
-                        />
-                      }
+                    <Box
                       sx={{
                         px: 3,
-                        backgroundColor:
-                          index % 2 === 0
-                            ? alpha(theme.palette.primary.light, 0.05)
-                            : 'transparent',
-                        '&:hover': {
-                          backgroundColor: alpha(
-                            theme.palette.primary.light,
-                            0.1
-                          ),
-                        },
+                        py: 1,
+                        backgroundColor: 'transparent',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
                       }}
                     >
-                      <Typography sx={{ fontWeight: 500 }}>
-                        {category.title}
-                      </Typography>
-                    </AccordionSummary>
-                    <AccordionDetails sx={{ px: 3, py: 1 }}>
-                      <Typography sx={{ color: 'text.secondary', mb: 2 }}>
-                        {category.description}
-                      </Typography>
-                      <Divider sx={{ my: 1 }} />
-                      <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                        <Box
-                          component="a"
-                          href={`/manual/${category.slug}`}
+                      <Box sx={{ flex: 1 }}>
+                        <Typography
                           sx={{
-                            color: theme.palette.primary.main,
-                            textDecoration: 'none',
+                            fontWeight: 500,
+                            color: theme.palette.text.primary,
+                            my: 1,
                             display: 'flex',
                             alignItems: 'center',
-                            '&:hover': {
-                              color: theme.palette.primary.dark,
-                              '& .MuiSvgIcon-root': {
-                                transform: 'translateX(3px)',
-                              },
-                            },
+                            '&:hover': { color: theme.palette.primary.main },
                           }}
                         >
-                          <Typography sx={{ mr: 0.5 }}>查看详情</Typography>
-                          <ArrowForwardIcon
-                            fontSize="small"
-                            sx={{ transition: 'transform 0.2s' }}
-                          />
-                        </Box>
+                          {category.title}
+                        </Typography>
+
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            color: 'text.secondary',
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                          }}
+                        >
+                          {category.description}
+                        </Typography>
                       </Box>
-                    </AccordionDetails>
-                  </Accordion>
-                </Paper>
+
+                      <ArrowForwardIcon
+                        fontSize="small"
+                        className="arrow-icon"
+                        sx={{
+                          color: theme.palette.primary.main,
+                          transition: 'transform 0.3s, opacity 0.2s',
+                          opacity: 0.6,
+                          ml: 2,
+                        }}
+                      />
+                    </Box>
+                  </Paper>
+                </Box>
               ))
             ) : (
               // 无结果时显示提示

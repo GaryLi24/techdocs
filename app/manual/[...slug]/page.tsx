@@ -4,9 +4,10 @@ import { notFound } from 'next/navigation'
 import { Metadata, ResolvingMetadata } from 'next'
 import Link from 'next/link'
 import { Container, Typography, Box, Paper, Breadcrumbs } from '@mui/material'
+import MarkdownContent from '@/components/MarkdownContent' // 我们将创建这个组件
 
-// 定义页面参数类型
-type ManualPageProps = {
+// 类型定义
+type PageProps = {
   params: {
     slug: string[]
   }
@@ -14,7 +15,7 @@ type ManualPageProps = {
 
 // 动态生成元数据
 export async function generateMetadata(
-  { params }: ManualPageProps,
+  { params }: PageProps,
   parent: ResolvingMetadata
 ): Promise<Metadata> {
   // 读取数据文件
@@ -60,7 +61,7 @@ export async function generateStaticParams() {
   return paths
 }
 
-export default async function ManualPage({ params }: ManualPageProps) {
+export default async function ManualPage({ params }: PageProps) {
   // 获取数据
   const filePath = path.join(process.cwd(), 'public', 'data.json')
   const fileContents = await fs.readFile(filePath, 'utf8')
@@ -87,6 +88,21 @@ export default async function ManualPage({ params }: ManualPageProps) {
     notFound()
   }
 
+  // 加载Markdown内容
+  let markdownContent = ''
+  if (currentDocument.contentPath) {
+    try {
+      const contentPath = path.join(
+        process.cwd(),
+        'public',
+        currentDocument.contentPath
+      )
+      markdownContent = await fs.readFile(contentPath, 'utf8')
+    } catch (error) {
+      console.error(`Error loading markdown file: ${error}`)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <Container maxWidth="md">
@@ -100,24 +116,51 @@ export default async function ManualPage({ params }: ManualPageProps) {
         </Breadcrumbs>
 
         {/* 文档内容 */}
-        <Paper elevation={0} className="p-6 mb-8">
-          <Typography variant="h4" component="h1" className="mb-4">
+        <Paper
+          elevation={0}
+          sx={{
+            p: 4,
+            mb: 4,
+            borderRadius: 2,
+            boxShadow: '0 2px 10px rgba(0, 0, 0, 0.05)',
+          }}
+        >
+          <Typography variant="h4" component="h1" sx={{ mb: 3 }}>
             {currentDocument.title}
           </Typography>
 
-          <Typography variant="body1" className="mb-4">
-            {currentDocument.description}
-          </Typography>
+          {currentDocument.description && (
+            <Typography
+              variant="body1"
+              sx={{
+                mb: 4,
+                color: 'text.secondary',
+                pb: 3,
+                borderBottom: '1px solid rgba(0, 0, 0, 0.08)',
+              }}
+            >
+              {currentDocument.description}
+            </Typography>
+          )}
 
-          {/* 这里可以添加Markdown渲染器来渲染content内容 */}
-          <Box className="prose max-w-none">
-            <Typography variant="body1">{currentDocument.content}</Typography>
+          {/* Markdown渲染组件 */}
+          <Box sx={{ mt: 3 }}>
+            <MarkdownContent content={markdownContent} />
           </Box>
         </Paper>
 
         {/* 返回按钮 */}
-        <Box className="mt-6">
-          <Link href="/" className="text-blue-600 hover:underline">
+        <Box sx={{ mt: 4 }}>
+          <Link
+            href="/"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              color: '#3a86ff',
+              textDecoration: 'none',
+              fontWeight: 500,
+            }}
+          >
             ← 返回帮助中心
           </Link>
         </Box>

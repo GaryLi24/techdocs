@@ -9,16 +9,16 @@
         {
           "id": "internet-guide",
           "title": "上网指南",
-          "description": "船舶网络连接和使用指南",
+          "description": "",
           "slug": "crew/internet-guide",
-          "content": "三层内容页面"
+          "contentPath": "content/crew/internet-guide.md"
         },
         {
-          "id": "package-ordering",
-          "title": "订购套餐",
-          "description": "如何订购和管理网络套餐",
-          "slug": "crew/package-ordering",
-          "content": "三层内容页面"
+          "id": "portal-operation",
+          "title": "Portal 使用指南",
+          "description": "",
+          "slug": "crew/portal-operation",
+          "contentPath": "content/crew/portal-operation.md"
         }
       ]
     },
@@ -29,18 +29,18 @@
       "icon": "engineer",
       "categories": [
         {
-          "id": "troubleshooting",
-          "title": "2-1 常见故障与解答",
-          "description": "网络与系统常见问题的诊断与解决方案",
-          "slug": "maintenance/troubleshooting",
-          "content": "三层内容页面"
+          "id": "internet-guide",
+          "title": "上网指南",
+          "description": "",
+          "slug": "crew/internet-guide",
+          "contentPath": "content/crew/internet-guide.md"
         },
         {
-          "id": "maintenance",
-          "title": "2-2 维护与保养",
-          "description": "设备定期维护和保养指南",
-          "slug": "maintenance/regular-maintenance",
-          "content": "三层内容页面"
+          "id": "portal-operation",
+          "title": "Portal 使用指南",
+          "description": "",
+          "slug": "crew/portal-operation",
+          "contentPath": "content/crew/portal-operation.md"
         }
       ]
     },
@@ -51,18 +51,18 @@
       "icon": "smart-ship",
       "categories": [
         {
-          "id": "operation-manual",
-          "title": "3-1 操作手册",
-          "description": "智能船舶系统操作指南",
-          "slug": "smart-ship/operation-manual",
-          "content": "三层内容页面"
+          "id": "internet-guide",
+          "title": "上网指南",
+          "description": "",
+          "slug": "crew/internet-guide",
+          "contentPath": "content/crew/internet-guide.md"
         },
         {
-          "id": "issue-reporting",
-          "title": "3-2 故障申报流程",
-          "description": "智能系统故障申报与处理流程",
-          "slug": "smart-ship/issue-reporting",
-          "content": "三层内容页面"
+          "id": "portal-operation",
+          "title": "Portal 使用指南",
+          "description": "",
+          "slug": "crew/portal-operation",
+          "contentPath": "content/crew/portal-operation.md"
         }
       ]
     }
