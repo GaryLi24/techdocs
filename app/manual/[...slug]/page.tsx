@@ -12,11 +12,52 @@ const ProgressiveMarkdown = dynamic(
   () => import('@/components/ProgressiveMarkdown'),
   {
     loading: () => (
-      <Box sx={{ my: 4 }}>
-        <Typography>加载文档中...</Typography>
+      <Box
+        sx={{
+          my: 4,
+          p: 3,
+          border: '1px dashed rgba(0,0,0,0.1)',
+          borderRadius: 1,
+          textAlign: 'center',
+        }}
+      >
+        <Typography
+          variant="body1"
+          sx={{ color: 'text.secondary', fontWeight: 500 }}
+        >
+          文档加载中...
+        </Typography>
+        <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
+          <Box
+            sx={{
+              width: '60%',
+              height: '4px',
+              bgcolor: '#f0f0f0',
+              borderRadius: 2,
+              position: 'relative',
+              overflow: 'hidden',
+            }}
+          >
+            <Box
+              sx={{
+                position: 'absolute',
+                left: 0,
+                top: 0,
+                height: '100%',
+                width: '30%',
+                bgcolor: 'primary.main',
+                animation: 'pulse 1.5s infinite',
+                '@keyframes pulse': {
+                  '0%': { left: '-30%' },
+                  '100%': { left: '100%' },
+                },
+              }}
+            />
+          </Box>
+        </Box>
       </Box>
     ),
-    ssr: true, // 允许服务器端渲染初始版本
+    ssr: true, // 改为客户端渲染，避免部分加载问题
   }
 )
 
@@ -154,7 +195,9 @@ export default async function ManualPage({ params }: { params: any }) {
           )}
 
           {/* 使用渐进式Markdown渲染 */}
-          <Box sx={{ mt: 3 }}>
+          <Box sx={{ mt: 1, minHeight: 300 }}>
+            {' '}
+            {/* 添加最小高度避免布局跳动 */}
             <ProgressiveMarkdown content={markdownContent} />
           </Box>
         </Paper>
