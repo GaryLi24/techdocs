@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Box, Skeleton } from '@mui/material'
+import { Box } from '@mui/material'
 import MarkdownContent from '@/components/MarkdownContent'
 import MarkdownSkeleton from './MarkdownSkeleton'
 

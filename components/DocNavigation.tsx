@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   IconButton,
   Drawer,
@@ -17,6 +17,13 @@ import {
 import MenuIcon from '@mui/icons-material/Menu'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import Link from 'next/link'
+import { createAnchorId } from '@/utils'
+
+interface DocNavigationProps {
+  markdownContent: string
+  title: string
+  roleName: string
+}
 
 // 提取 Markdown 标题的函数
 const extractHeadings = (content: string) => {
@@ -27,24 +34,14 @@ const extractHeadings = (content: string) => {
   while ((match = headingRegex.exec(content)) !== null) {
     const level = match[1].length
     const text = match[2].trim()
-    const anchor = text
-      .toLowerCase()
-      .replace(/\s+/g, '-')
-      .replace(/[^a-z0-9-]/g, '')
+    const anchor = createAnchorId(text)
 
-    // 只提取 1-3 级标题
     if (level <= 3) {
       headings.push({ level, text, anchor })
     }
   }
 
   return headings
-}
-
-interface DocNavigationProps {
-  markdownContent: string
-  title: string
-  roleName: string
 }
 
 export default function DocNavigation({
@@ -55,6 +52,19 @@ export default function DocNavigation({
   const [drawerOpen, setDrawerOpen] = useState(false)
   const theme = useTheme()
 
+  // 添加滚动处理状态 (可选，用于实现滚动时的阴影效果)
+  const [scrolled, setScrolled] = useState(false)
+
+  // 监听滚动事件 (可选)
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 10)
+    }
+
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
   const headings = extractHeadings(markdownContent)
 
   return (
@@ -62,13 +72,20 @@ export default function DocNavigation({
       {/* 顶部导航 */}
       <Box
         sx={{
+          position: 'fixed', // 固定在页面顶部
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 1100, // 确保在其他内容之上
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          mb: 3,
           height: 56,
-          px: 1,
+          px: { xs: 1, sm: 2 },
+          backgroundColor: 'white', // 添加背景色
           borderBottom: `1px solid ${theme.palette.divider}`,
+          boxShadow: scrolled ? '0 1px 4px rgba(0,0,0,0.1)' : 'none', // 滚动时添加阴影
+          transition: 'box-shadow 0.3s ease',
         }}
       >
         {/* 左侧返回按钮 */}
@@ -158,7 +175,29 @@ export default function DocNavigation({
                   <ListItemButton
                     component="a"
                     href={`#${heading.anchor}`}
-                    onClick={() => setDrawerOpen(false)}
+                    onClick={event => {
+                      event.preventDefault()
+                      setDrawerOpen(false)
+
+                      // 查找目标元素
+                      const targetElement = document.getElementById(
+                        heading.anchor
+                      )
+                      if (targetElement) {
+                        // 计算滚动位置，考虑顶部导航栏高度
+                        const topOffset = 80 // 导航栏高度 + 一些额外空间
+                        const elementPosition =
+                          targetElement.getBoundingClientRect().top
+                        const offsetPosition =
+                          elementPosition + window.pageYOffset - topOffset
+
+                        // 平滑滚动
+                        window.scrollTo({
+                          top: offsetPosition,
+                          behavior: 'smooth',
+                        })
+                      }
+                    }}
                     dense
                     sx={{
                       borderRadius: 1,

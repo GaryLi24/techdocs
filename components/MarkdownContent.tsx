@@ -4,8 +4,9 @@ import ReactMarkdown from 'react-markdown'
 import rehypeRaw from 'rehype-raw'
 import rehypeSanitize from 'rehype-sanitize'
 import remarkGfm from 'remark-gfm'
-import { Typography, Link, Box, List, ListItem } from '@mui/material'
+import { Box } from '@mui/material'
 import { styled } from '@mui/material/styles'
+import { createAnchorId } from '@/utils'
 
 // 样式化Markdown容器
 const MarkdownBox = styled(Box)(({ theme }) => ({
@@ -110,48 +111,23 @@ export default function MarkdownContent({ content }: MarkdownContentProps) {
         remarkPlugins={[remarkGfm]}
         components={{
           h1: ({ node, ...props }) => {
-            const id = props.children
-              ? String(props.children).toLowerCase().replace(/\s+/g, '-')
-              : ''
-            return (
-              <Typography
-                variant="h4"
-                component="h2"
-                id={id}
-                sx={{ mt: 4, mb: 2, fontWeight: 600, scrollMarginTop: '80px' }}
-                {...props}
-              />
-            )
+            const children = props.children as React.ReactNode
+            const text = children ? String(children) : ''
+            const id = createAnchorId(text)
+            return <h1 id={id} {...props} />
           },
           h2: ({ node, ...props }) => {
-            const id = props.children
-              ? String(props.children).toLowerCase().replace(/\s+/g, '-')
-              : ''
-            return (
-              <Typography
-                variant="h5"
-                component="h3"
-                id={id}
-                sx={{ mt: 3, mb: 2, fontWeight: 600, scrollMarginTop: '80px' }}
-                {...props}
-              />
-            )
+            const children = props.children as React.ReactNode
+            const text = children ? String(children) : ''
+            const id = createAnchorId(text)
+            return <h2 id={id} {...props} />
           },
           h3: ({ node, ...props }) => {
-            const id = props.children
-              ? String(props.children).toLowerCase().replace(/\s+/g, '-')
-              : ''
-            return (
-              <Typography
-                variant="h6"
-                component="h4"
-                id={id}
-                sx={{ mt: 2, mb: 2, fontWeight: 500, scrollMarginTop: '80px' }}
-                {...props}
-              />
-            )
+            const children = props.children as React.ReactNode
+            const text = children ? String(children) : ''
+            const id = createAnchorId(text)
+            return <h3 id={id} {...props} />
           },
-          // ...其他组件
         }}
       >
         {content}

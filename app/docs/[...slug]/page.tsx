@@ -156,7 +156,7 @@ export default async function ManualPage({ params }: { params: any }) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-4">
+    <div className="min-h-screen bg-gray-50 pb-4 pt-16">
       <DocNavigation
         markdownContent={markdownContent}
         title={currentDocument.title}
