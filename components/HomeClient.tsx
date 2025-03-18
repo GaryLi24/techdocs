@@ -106,7 +106,6 @@ export default function HomeClient({ initialRoles }: { initialRoles: Role[] }) {
   // 添加搜索状态
   const [searchQuery, setSearchQuery] = useState<string>('')
   const [filteredCategories, setFilteredCategories] = useState<Category[]>([])
-  const [isSearching, setIsSearching] = useState<boolean>(false)
   const [markdownContents, setMarkdownContents] = useState<{
     [key: string]: string
   }>({})
@@ -115,40 +114,143 @@ export default function HomeClient({ initialRoles }: { initialRoles: Role[] }) {
   // 添加一个标记，确保此 effect 只运行一次
   const didLoad = useRef(false)
 
-  // 添加全局变量跟踪已经请求的文件
-  const requestInProgress = new Map()
+  // 使用 useRef 存储进行中请求的映射
+  const requestInProgressRef = useRef(new Map())
+
+  // 自动清理机制防止存储溢出
+  useEffect(() => {
+    // 清理过期缓存，避免移动设备存储溢出
+    const cleanupStorage = () => {
+      try {
+        const MAX_CACHE_ITEMS = 20 // 最多保留项目数
+        const keys = Object.keys(localStorage)
+          .filter(k => k.startsWith('md_'))
+          .sort((a, b) => {
+            // 获取上次访问时间
+            const timeA = localStorage.getItem(`${a}_access_time`) || '0'
+            const timeB = localStorage.getItem(`${b}_access_time`) || '0'
+            return Number(timeB) - Number(timeA) // 降序排列
+          })
+
+        // 删除超出限制的项目
+        if (keys.length > MAX_CACHE_ITEMS) {
+          keys.slice(MAX_CACHE_ITEMS).forEach(key => {
+            localStorage.removeItem(key)
+            localStorage.removeItem(`${key}_access_time`)
+          })
+          console.log(`已清理 ${keys.length - MAX_CACHE_ITEMS} 个旧缓存项`)
+        }
+      } catch (e) {
+        console.warn('清理缓存失败:', e)
+      }
+    }
+
+    // 应用启动时执行清理
+    cleanupStorage()
+  }, [])
 
   // 加载 Markdown 内容
   const loadMarkdownContent = useCallback(async (path: string) => {
-    // 检查会话存储缓存
-    const cachedContent = sessionStorage.getItem(`md-cache-${path}`)
-    if (cachedContent) {
-      return cachedContent
+    // 使用唯一键以避免冲突
+    const storageKey = `md-${path.replace(/\//g, '_')}`
+
+    // 1. 检查localStorage (持久化缓存)
+    try {
+      const cachedContent = localStorage.getItem(storageKey)
+      if (cachedContent) {
+        console.log(`从localStorage加载: ${path}`)
+        return cachedContent
+      }
+    } catch (e) {
+      console.warn('无法访问localStorage:', e)
     }
 
-    // 检查是否已有相同的请求正在进行中
+    // 2. 检查会话存储 (备用)
+    try {
+      const cachedContent = sessionStorage.getItem(`md-cache-${path}`)
+      if (cachedContent) {
+        return cachedContent
+      }
+    } catch (e) {
+      console.warn('无法访问sessionStorage:', e)
+      // 继续执行，不依赖缓存
+    }
+
+    // 3. 检查重复请求 - 使用ref而不是组件作用域变量
+    const requestInProgress = requestInProgressRef.current
     if (requestInProgress.has(path)) {
       return await requestInProgress.get(path)
     }
 
-    // 创建新请求并存储 Promise
+    // 4. 创建新请求
     const requestPromise = (async () => {
       try {
+        // 设置请求超时，移动环境下避免长时间等待
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 10000) // 10秒超时
+
         const response = await fetch(`/${path}`, {
           cache: 'force-cache',
           headers: {
-            'Cache-Control': 'max-age=3600',
+            'Cache-Control': 'max-age=2592000',
           },
+          signal: controller.signal,
         })
+
+        clearTimeout(timeoutId)
 
         if (response.ok) {
           const content = await response.text()
-          sessionStorage.setItem(`md-cache-${path}`, content)
-          return content
+          // 移动优化: 大文件处理
+          if (content.length > 100000) {
+            // 大约100KB
+            // 移除不必要的空白行和注释以减小体积
+            const optimizedContent = content
+              .replace(/\n\s*\n/g, '\n\n') // 合并多余空行
+              .replace(/<!--[\s\S]*?-->/g, '') // 移除HTML注释
+
+            try {
+              localStorage.setItem(storageKey, optimizedContent)
+            } catch (e) {
+              console.warn('无法存储到localStorage - 文件可能过大:', e)
+
+              // 尝试使用压缩存储大文件
+              try {
+                const compressedContent = optimizedContent.substring(0, 500000) // 限制大小
+                localStorage.setItem(storageKey, compressedContent)
+              } catch (e2) {
+                console.error('存储失败:', e2)
+              }
+            }
+            return optimizedContent
+          } else {
+            // 小文件直接存储
+            try {
+              localStorage.setItem(storageKey, content)
+            } catch (e) {
+              console.warn('无法存储到localStorage:', e)
+            }
+            return content
+          }
         }
+        console.error(`加载失败: ${path}, 状态: ${response.status}`)
         return ''
-      } catch (error) {
-        console.error(`Error loading markdown from ${path}:`, error)
+      } catch (error: any) {
+        if (error?.name === 'AbortError') {
+          console.warn(`请求超时: ${path}`)
+          // 尝试加载之前的缓存版本作为后备
+          try {
+            const oldCacheKeys = Object.keys(localStorage).filter(
+              key =>
+                key.includes(path.replace(/\//g, '_')) && key !== storageKey
+            )
+
+            if (oldCacheKeys.length > 0) {
+              return localStorage.getItem(oldCacheKeys[0]) || ''
+            }
+          } catch (e) {}
+        }
+        console.error(`加载错误: ${path}:`, error)
         return ''
       } finally {
         // 请求完成后从映射中删除
@@ -156,7 +258,7 @@ export default function HomeClient({ initialRoles }: { initialRoles: Role[] }) {
       }
     })()
 
-    // 存储请求 Promise
+    // 存储请求Promise
     requestInProgress.set(path, requestPromise)
     return requestPromise
   }, [])
@@ -174,11 +276,6 @@ export default function HomeClient({ initialRoles }: { initialRoles: Role[] }) {
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const query = event.target.value
     setSearchQuery(query)
-
-    // 显示搜索指示器
-    if (query) {
-      setIsSearching(true)
-    }
   }
 
   // 初始加载所有 Markdown 文件
@@ -198,7 +295,7 @@ export default function HomeClient({ initialRoles }: { initialRoles: Role[] }) {
         for (const category of role.categories) {
           if (
             category.contentPath &&
-            !requestInProgress.has(category.contentPath)
+            !requestInProgressRef.current.has(category.contentPath)
           ) {
             loadPromises.push(
               loadMarkdownContent(category.contentPath).then(content => {
@@ -215,8 +312,6 @@ export default function HomeClient({ initialRoles }: { initialRoles: Role[] }) {
     }
 
     loadAllMarkdown()
-
-    // 移除 loadMarkdownContent 依赖，避免重复触发
   }, [roles]) // 只在 roles 变化时重新加载
 
   // 使用效果钩子实现实时搜索 - 新增
@@ -261,7 +356,6 @@ export default function HomeClient({ initialRoles }: { initialRoles: Role[] }) {
           setFilteredCategories(results.map(r => r.category))
         }
       }
-      setIsSearching(false)
     }, 800)
 
     return () => clearTimeout(searchTimeout)
@@ -473,18 +567,6 @@ export default function HomeClient({ initialRoles }: { initialRoles: Role[] }) {
                   component="a"
                   href={`/docs/${category.slug}`}
                   onMouseEnter={() => {
-                    // 预加载文档内容
-                    if (category.contentPath && markdownContents[category.id]) {
-                      loadMarkdownContent(category.contentPath).then(
-                        content => {
-                          setMarkdownContents(prev => ({
-                            ...prev,
-                            [category.id]: content,
-                          }))
-                        }
-                      )
-                    }
-                    // 可选：使用 Next.js 预加载页面
                     router.prefetch(`/docs/${category.slug}`)
                   }}
                   sx={{
