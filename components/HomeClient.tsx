@@ -50,10 +50,13 @@ interface Role {
 // 定义搜索结果类型
 interface SearchResult {
   category: Category
-  titleMatch: boolean // 文档标题是否匹配
+  titleMatch: boolean
   headingMatches: {
-    // 匹配的Markdown标题
     level: number
+    text: string
+    index: number
+  }[]
+  contentMatches: {
     text: string
     index: number
   }[]
@@ -278,6 +281,46 @@ export default function HomeClient({ initialRoles }: { initialRoles: Role[] }) {
     setSearchQuery(query)
   }
 
+  // 提取匹配的上下文
+  const extractContentMatches = (
+    content: string,
+    searchQuery: string,
+    maxMatches: number = 3
+  ): { text: string; index: number }[] => {
+    const matches: { text: string; index: number }[] = []
+    const lowerContent = content.toLowerCase()
+    const queryLength = searchQuery.length
+    const contextLength = 60 // 匹配前后各显示的字符数
+
+    let startIndex = 0
+    for (let i = 0; i < maxMatches; i++) {
+      const matchIndex = lowerContent.indexOf(searchQuery, startIndex)
+      if (matchIndex === -1) break
+
+      const contextStart = Math.max(0, matchIndex - contextLength)
+      const contextEnd = Math.min(
+        content.length,
+        matchIndex + queryLength + contextLength
+      )
+      const matchText = content.substring(contextStart, contextEnd)
+
+      // 添加省略号
+      const formattedText =
+        (contextStart > 0 ? '...' : '') +
+        matchText +
+        (contextEnd < content.length ? '...' : '')
+
+      matches.push({
+        text: formattedText,
+        index: matchIndex,
+      })
+
+      startIndex = matchIndex + queryLength
+    }
+
+    return matches
+  }
+
   // 初始加载所有 Markdown 文件
   useEffect(() => {
     const loadAllMarkdown = async () => {
@@ -342,12 +385,32 @@ export default function HomeClient({ initialRoles }: { initialRoles: Role[] }) {
               heading.text.toLowerCase().includes(searchQuery.toLowerCase())
             )
 
+            // 新增: 检查全文内容匹配
+            const fullTextMatch = content
+              .toLowerCase()
+              .includes(searchQuery.toLowerCase())
+
+            // 提取匹配上下文，最多3个匹配片段
+            const contentMatches = fullTextMatch
+              ? extractContentMatches(
+                  content,
+                  searchQuery.toLowerCase(),
+                  3 // 最多显示3个匹配结果
+                )
+              : []
+
             // 如果有任何匹配，添加到结果中
-            if (titleMatch || descriptionMatch || headingMatches.length > 0) {
+            if (
+              titleMatch ||
+              descriptionMatch ||
+              headingMatches.length > 0 ||
+              contentMatches.length > 0
+            ) {
               results.push({
                 category,
                 titleMatch: titleMatch || descriptionMatch,
                 headingMatches,
+                contentMatches, // 新增字段
               })
             }
           })
@@ -833,6 +896,141 @@ export default function HomeClient({ initialRoles }: { initialRoles: Role[] }) {
                                 <Typography variant="body2">
                                   {heading.text}
                                 </Typography>
+                              </MuiLink>
+                            </ListItem>
+                          ))}
+                        </List>
+                      </Box>
+                    </Paper>
+                  )}
+
+                  {result.contentMatches.length > 0 && (
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        mt: 1,
+                        mb: 2,
+                        overflow: 'hidden',
+                        borderRadius: 2,
+                        border: `1px solid ${alpha(
+                          theme.palette.warning.light,
+                          0.3
+                        )}`,
+                        backgroundColor: alpha(
+                          theme.palette.warning.light,
+                          0.03
+                        ),
+                      }}
+                    >
+                      <Box sx={{ p: 2 }}>
+                        {/* 添加文件名标题 */}
+                        <Typography
+                          component="div"
+                          variant="subtitle2"
+                          sx={{
+                            mb: 1.5,
+                            display: 'flex',
+                            alignItems: 'center',
+                            color: theme.palette.text.secondary,
+                          }}
+                        >
+                          <Box
+                            component="span"
+                            sx={{
+                              width: 18,
+                              height: 18,
+                              mr: 1,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              borderRadius: '50%',
+                              fontSize: '0.75rem',
+                              fontWeight: 'bold',
+                              color: 'white',
+                              bgcolor: theme.palette.warning.main,
+                            }}
+                          >
+                            C
+                          </Box>
+                          在
+                          <MuiLink
+                            href={`/docs/${result.category.slug}`}
+                            sx={{
+                              fontWeight: 500,
+                              mx: 0.5,
+                              color: theme.palette.warning.dark,
+                              textDecoration: 'none',
+                              '&:hover': { textDecoration: 'underline' },
+                            }}
+                          >
+                            {result.category.title}
+                          </MuiLink>
+                          的内容中找到:
+                        </Typography>
+
+                        {/* 匹配内容列表 */}
+                        <List
+                          dense
+                          disablePadding
+                          sx={{
+                            ml: 1,
+                            borderLeft: `2px solid ${alpha(
+                              theme.palette.warning.light,
+                              0.4
+                            )}`,
+                          }}
+                        >
+                          {result.contentMatches.map((match, i) => (
+                            <ListItem
+                              key={`content-${i}`}
+                              disablePadding
+                              sx={{
+                                mb: 0.5,
+                                pl: 2,
+                              }}
+                            >
+                              <MuiLink
+                                href={`/docs/${result.category.slug}`}
+                                sx={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  width: '100%',
+                                  color: theme.palette.text.secondary,
+                                  textDecoration: 'none',
+                                  py: 0.5,
+                                  transition: 'background-color 0.2s',
+                                  borderRadius: 1,
+                                  '&:hover': {
+                                    color: theme.palette.warning.dark,
+                                    bgcolor: alpha(
+                                      theme.palette.warning.light,
+                                      0.1
+                                    ),
+                                  },
+                                }}
+                              >
+                                <Typography
+                                  variant="body2"
+                                  sx={{
+                                    // 提高匹配词高亮显示
+                                    '& mark': {
+                                      bgcolor: alpha(
+                                        theme.palette.warning.main,
+                                        0.2
+                                      ),
+                                      color: theme.palette.warning.dark,
+                                      fontWeight: 500,
+                                      padding: '0 2px',
+                                      borderRadius: '2px',
+                                    },
+                                  }}
+                                  dangerouslySetInnerHTML={{
+                                    __html: match.text.replace(
+                                      new RegExp(searchQuery, 'gi'),
+                                      `<mark>$&</mark>`
+                                    ),
+                                  }}
+                                />
                               </MuiLink>
                             </ListItem>
                           ))}
